@@ -19,6 +19,8 @@ from mxnet.gluon.loss import Loss
 from gluonts.core.component import validated
 from gluonts.mx import Tensor
 
+from gluonts.mx.block._custom_quantile_loss import CustomQuantileLoss
+
 
 def uniform_weights(objects: list) -> List[float]:
     """
@@ -111,9 +113,7 @@ class QuantileLoss(Loss):
             else uniform_weights(quantiles)
         )
 
-    def hybrid_forward(
-        self, F, y_true: Tensor, y_pred: Tensor, sample_weight=None
-    ):
+    def hybrid_forward(self, F, y_true: Tensor, y_pred: Tensor, sample_weight=None):
         """
         Compute the weighted sum of quantile losses.
 
@@ -149,17 +149,13 @@ class QuantileLoss(Loss):
                 weight * self.compute_quantile_loss(F, y_true, y_pred_q, level)
             )
         stacked_qt_losses = F.stack(*qt_loss, axis=-1)
-        sum_qt_loss = F.mean(
-            stacked_qt_losses, axis=-1
-        )  # avg across quantiles
+        sum_qt_loss = F.mean(stacked_qt_losses, axis=-1)  # avg across quantiles
         if sample_weight is not None:
             return sample_weight * sum_qt_loss
         return sum_qt_loss
 
     @staticmethod
-    def compute_quantile_loss(
-        F, y_true: Tensor, y_pred_p: Tensor, p: float
-    ) -> Tensor:
+    def compute_quantile_loss(F, y_true: Tensor, y_pred_p: Tensor, p: float) -> Tensor:
         """
         Compute the quantile loss of the given quantile.
 
@@ -267,9 +263,7 @@ class IncrementalDenseLayerProjection(nn.HybridBlock):
             if self.num_outputs == 1
             else (
                 F.cumsum(
-                    F.concat(
-                        self.proj_intrcpt(x), self.proj_incrmnt(x), dim=-1
-                    ),
+                    F.concat(self.proj_intrcpt(x), self.proj_incrmnt(x), dim=-1),
                     axis=3,
                 )
             )
@@ -309,6 +303,16 @@ class IncrementalQuantileOutput(QuantileOutput):
         nn.HybridBlock
             constructs quantile loss object.
         """
+        print("return CustomQuantileLoss")
+        return CustomQuantileLoss(
+            quantiles=self.quantiles,
+            quantile_weights=(
+                self.quantile_weights
+                if self.quantile_weights is not None
+                else crps_weights_pwl(self.quantiles)
+            ),
+        )
+        """
         return QuantileLoss(
             quantiles=self.quantiles,
             quantile_weights=(
@@ -317,6 +321,7 @@ class IncrementalQuantileOutput(QuantileOutput):
                 else crps_weights_pwl(self.quantiles)
             ),
         )
+        """
 
     def get_quantile_proj(self, **kwargs) -> nn.HybridBlock:
         """

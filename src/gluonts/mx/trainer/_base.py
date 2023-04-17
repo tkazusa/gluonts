@@ -123,9 +123,7 @@ class Trainer:
         callbacks: Optional[List[Callback]] = None,
         add_default_callbacks: bool = True,
     ) -> None:
-        assert (
-            0 <= epochs < float("inf")
-        ), "The value of `epochs` should be >= 0"
+        assert 0 <= epochs < float("inf"), "The value of `epochs` should be >= 0"
         assert (
             0 < num_batches_per_epoch
         ), "The value of `num_batches_per_epoch` should be > 0"
@@ -153,16 +151,13 @@ class Trainer:
         # TODO the following is done for backwards compatibility. For future
         # versions, add the default callbacks as default arg
         if add_default_callbacks:
-            if not any(
-                isinstance(callback, ModelAveraging) for callback in callbacks
-            ):
+            if not any(isinstance(callback, ModelAveraging) for callback in callbacks):
                 callbacks.append(
                     ModelAveraging(avg_strategy=SelectNBestMean(num_models=1))
                 )
 
             if not any(
-                isinstance(callback, LearningRateReduction)
-                for callback in callbacks
+                isinstance(callback, LearningRateReduction) for callback in callbacks
             ):
                 callbacks.append(
                     LearningRateReduction(
@@ -252,7 +247,6 @@ class Trainer:
             ) -> mx.metric.Loss:
                 nonlocal first_forward
                 tic = time.time()
-
                 epoch_loss = mx.metric.Loss()
 
                 if is_training:
@@ -260,13 +254,9 @@ class Trainer:
                     # network yet. Instead, this callback is called after
                     # network initialization.
                     if not first_forward:
-                        self.callbacks.on_train_epoch_start(
-                            training_network=net
-                        )
+                        self.callbacks.on_train_epoch_start(training_network=net)
                 else:
-                    self.callbacks.on_validation_epoch_start(
-                        training_network=net
-                    )
+                    self.callbacks.on_validation_epoch_start(training_network=net)
 
                 batch_iter = itertools.islice(batch_iter, num_batches_to_use)
                 it = tqdm(batch_iter, total=num_batches_to_use)
@@ -285,15 +275,11 @@ class Trainer:
                         first_forward = False
                         _ = net(*batch.values())
 
-                        self.callbacks.on_network_initializing_end(
-                            training_network=net
-                        )
+                        self.callbacks.on_network_initializing_end(training_network=net)
 
                         # Call the batch start callback as the model was not
                         # compiled before
-                        self.callbacks.on_train_epoch_start(
-                            training_network=net
-                        )
+                        self.callbacks.on_train_epoch_start(training_network=net)
 
                     with mx.autograd.record():
                         # we set the mode explicitly as by default mxnet
@@ -333,16 +319,12 @@ class Trainer:
                             loss.backward()
                             trainer.step(batch_size)
 
-                            should_continue = (
-                                self.callbacks.on_train_batch_end(
-                                    training_network=net
-                                )
+                            should_continue = self.callbacks.on_train_batch_end(
+                                training_network=net
                             )
                         else:
-                            should_continue = (
-                                self.callbacks.on_validation_batch_end(
-                                    training_network=net
-                                )
+                            should_continue = self.callbacks.on_validation_batch_end(
+                                training_network=net
                             )
 
                         epoch_loss.update(None, preds=loss)
@@ -361,8 +343,7 @@ class Trainer:
                         net_name = type(net).__name__
                         num_model_param = self.count_model_params(net)
                         logger.info(
-                            f"Number of parameters in {net_name}:"
-                            f" {num_model_param}"
+                            f"Number of parameters in {net_name}:" f" {num_model_param}"
                         )
                     if not should_continue:
                         self.halt = True
@@ -375,9 +356,7 @@ class Trainer:
                     else:
                         error_data_type = "validation"
                     raise GluonTSDataError(
-                        "No "
-                        + error_data_type
-                        + " data batch could be constructed; "
+                        "No " + error_data_type + " data batch could be constructed; "
                         "this usually indicates that the "
                         + error_data_type
                         + " dataset "
@@ -413,9 +392,7 @@ class Trainer:
                         break
 
                     curr_lr = trainer.learning_rate
-                    logger.info(
-                        f"Epoch[{epoch_no}] Learning rate is {curr_lr}"
-                    )
+                    logger.info(f"Epoch[{epoch_no}] Learning rate is {curr_lr}")
 
                     epoch_loss = loop(
                         epoch_no,
@@ -431,9 +408,7 @@ class Trainer:
                     )
 
                     if is_validation_available:
-                        epoch_loss = loop(
-                            epoch_no, validation_iter, is_training=False
-                        )
+                        epoch_loss = loop(epoch_no, validation_iter, is_training=False)
 
                         should_continue = (
                             should_continue
@@ -460,21 +435,16 @@ class Trainer:
                     save_epoch_info(bp, epoch_info)
 
                     # update best epoch info
-                    if loss_value(epoch_loss) < cast(
-                        float, best_epoch_info["score"]
-                    ):
+                    if loss_value(epoch_loss) < cast(float, best_epoch_info["score"]):
                         best_epoch_info = epoch_info.copy()
 
-                    should_continue = (
-                        should_continue
-                        and self.callbacks.on_epoch_end(
-                            epoch_no=epoch_no,
-                            epoch_loss=loss_value(epoch_loss),
-                            training_network=net,
-                            trainer=trainer,
-                            best_epoch_info=best_epoch_info,
-                            ctx=self.ctx,
-                        )
+                    should_continue = should_continue and self.callbacks.on_epoch_end(
+                        epoch_no=epoch_no,
+                        epoch_loss=loss_value(epoch_loss),
+                        training_network=net,
+                        trainer=trainer,
+                        best_epoch_info=best_epoch_info,
+                        ctx=self.ctx,
                     )
 
                     if not should_continue:
@@ -482,8 +452,7 @@ class Trainer:
                         break
             except KeyboardInterrupt:
                 warnings.warn(
-                    "Detected KeyboardInterrupt, attempting graceful "
-                    "shutdown..."
+                    "Detected KeyboardInterrupt, attempting graceful " "shutdown..."
                 )
                 # save model and epoch info
                 bp = base_path()
